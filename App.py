@@ -1,6 +1,8 @@
 import pymongo
 import csv
 import json
+import seaborn as sns
+import matplotlib.pyplot as plt
 from pymongo import MongoClient
 
 def insert(collection):
@@ -13,36 +15,56 @@ def insert(collection):
             collection.insert_one(d)
             id += 1
 
-def popular1(collection):
+def topPopularGenres(collection):
+    collection.update_many({"$or": [{"score": ""}, {"votes": ""}]}, {"$set": {"score": 0, "votes": 0}})
     intConversion = {
         "$addFields": {
             "convertedScore": { "$toDouble": "$score" },
             "convertedVotes": { "$toDouble": "$votes" },
         }
     }
-    
+
     project = {
-        "$project": { "_id": 0, "metric": { "$multiply": [ "$convertedScore", "$convertedVotes" ] } },
+        "$project": { "_id": 0, "name": 1, "genre": 1, "metric": { "$multiply": [ "$convertedScore", "$convertedVotes" ] } },
     }
-    
+
     sort = {
         "$sort": {"metric": -1}
     }
-    
-    limit = { "$limit": 200 }
+
+    limit = { "$limit": 300}
+
+    group = {"$group": {"_id": "$genre", "total_amount": {"$sum": 1}}}
 
     result = collection.aggregate(
         [
             intConversion,
             project,
             sort,
-            limit
+            limit,
+            group
         ]
     )
-    for i in result:
-        print(i)
+    #cursor = collection.find().sort({"score": -1}).limit(15)
+    
+    genres = []
+    totals = []
 
+    for json in result:
+        print(json)
+        genres.append(json["_id"])
+        totals.append(json["total_amount"])
+    
+    figure = plt.figure(figsize = (20, 10))
 
+    plt.bar(genres, totals, color ='blue', width = 0.4)
+ 
+    plt.xlabel("Genres")
+    plt.ylabel("Amount of movies")
+    plt.title("Top Genres in Top 300 Most Popular Movies")
+    plt.show()
+
+def 
 
 if __name__ == "__main__":
     client = pymongo.MongoClient(
@@ -50,5 +72,5 @@ if __name__ == "__main__":
     db = client['movie_information']
     collection = db["movies"]
 
-    popular1(collection)
+    topPopularGenres(collection)
     
