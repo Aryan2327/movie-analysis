@@ -13,10 +13,42 @@ def insert(collection):
             collection.insert_one(d)
             id += 1
 
+def popular1(collection):
+    intConversion = {
+        "$addFields": {
+            "convertedScore": { "$toDouble": "$score" },
+            "convertedVotes": { "$toDouble": "$votes" },
+        }
+    }
+    
+    project = {
+        "$project": { "_id": 0, "metric": { "$multiply": [ "$convertedScore", "$convertedVotes" ] } },
+    }
+    
+    sort = {
+        "$sort": {"metric": -1}
+    }
+    
+    limit = { "$limit": 200 }
+
+    result = collection.aggregate(
+        [
+            intConversion,
+            project,
+            sort,
+            limit
+        ]
+    )
+    for i in result:
+        print(i)
+
 
 
 if __name__ == "__main__":
     client = pymongo.MongoClient(
-        "mongodb+srv://aryan2:password@cluster0.frmhm.mongodb.net/admin?retryWrites=true&w=majority")
+        "mongodb+srv://george:sujoysikdar@cluster0.frmhm.mongodb.net/admin?retryWrites=true&w=majority")
     db = client['movie_information']
     collection = db["movies"]
+
+    popular1(collection)
+    
