@@ -130,10 +130,6 @@ def budgetRevenueRelationship(collection1, collection2):
                 #print(y)
             if count != 0:
                 avg = total / count
-                if (avg > 12):
-                    for m in x["MovieInfo"]:
-                        if ("budgetGrossRatio" in m.keys()):
-                            print(m["_id"], m["budgetGrossRatio"])
                 revGross.append(avg)
                 gdps.append(int(x["GDP ($ per capita)"]))
 
@@ -164,12 +160,50 @@ Utilize MongoDB querying to access various collections from the entire database 
 profit (gross - budget) vs score
 """
 def profitScoreRelationship(collection1):
+    collection1.update_many({"$or": [{"score": ""}, {"gross": ""}, {"budget": ""}]}, {"$set": {"score": 0, "budget": 0, "gross": 0}})
+    doubleConversion = {
+        "$addFields": {
+            "convertedGross": { "$toDouble": "$gross" },
+            "convertedBudget": { "$toDouble": "$budget" },
+            "convertedScore": {"$toDouble": "$score"}
+        }
+    }
 
     project = {
-        "$project": { "_id": 0, "name": 1, "score": 1, "metric": { "$subtract": [ "$gross", "$budget" ] } },
+        "$project": { "_id": 0, "convertedScore": 1, "profit": { "$subtract": [ "$convertedGross", "$convertedBudget" ] } },
     }
+
+    result = collection1.aggregate(
+        [
+            doubleConversion,
+            project
+        ]
+    )
+
     profit = []
     score = []
+
+    for json in result:
+        profit.append(json["profit"])
+        score.append(json["convertedScore"])
+
+    figure = plt.figure(figsize=(15, 10))
+    plt.scatter(profit, score, color='blue')
+
+    plt.xlabel("Profit")
+    plt.ylabel("Score")
+    plt.title("Profit vs Score")
+    profit = np.log(np.array(profit))
+    score = np.array(score)
+    log_curve = np.polyfit(profit, score, 1)
+    print(log_curve)
+
+    """
+    model.fit(profit[:,np.newaxis], score)
+    plt.plot(profit, model.predict(profit[:,np.newaxis]), color='red')
+    plt.show()
+    """
+
 if __name__ == "__main__":
     client = pymongo.MongoClient(
         "mongodb+srv://george:sujoysikdar@cluster0.frmhm.mongodb.net/admin?retryWrites=true&w=majority")
@@ -186,8 +220,8 @@ if __name__ == "__main__":
         #     #TODO
         elif (inp == "3"):
             budgetRevenueRelationship(collection1, collection2)
-        # elif (input == "4"):
-        #     #TODO
+        elif (inp == "4"):
+            profitScoreRelationship(collection1)
         elif (inp == "q"):
             break
         else:
