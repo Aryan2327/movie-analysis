@@ -1,11 +1,12 @@
 import pymongo
 import csv
 import json
-import seaborn as sns
 import matplotlib.pyplot as plt
 import numpy as np
 from pymongo import MongoClient
 from sklearn.linear_model import LinearRegression
+import pygal
+from countryCodes import countryCodes
 
 def insert(collection):
     with open('movies.csv', mode = 'r', encoding='utf-8') as csv_file:
@@ -76,6 +77,72 @@ def topPopularGenres(collection):
 Utilize MongoDB querying to access various collections from the entire database of movie information. Top genre per country map
 
 """
+def topGenreCountry(collection1):  
+    group = {"$group": {"_id": {"country": "$country", "genre": "$genre"}, "total_amount": {"$sum": 1}}}
+    project = {
+        "$project": {"country": "_id.country", "genre": "_id.genre", "total_amount": 1 },
+    }
+    result = collection1.aggregate(
+        [
+            group,
+            project
+        ]
+    )
+
+    for k,v in countryCodes.items():
+        pass
+    
+   
+    print(countryCodes)
+
+    worldMap = pygal.maps.world.World()
+
+    worldMap.title = 'Top Genre per Country'
+
+# {'_id': 'Kenya', 'total_amount': 1}
+# {'_id': 'Yugoslavia', 'total_amount': 5}
+# {'_id': 'Spain', 'total_amount': 47}
+# {'_id': 'Ireland', 'total_amount': 43}
+# {'_id': 'Sweden', 'total_amount': 25}
+# {'_id': 'Japan', 'total_amount': 80}
+# {'_id': 'Iran', 'total_amount': 10}
+# {'_id': 'Czech Republic', 'total_amount': 8}
+# {'_id': 'France', 'total_amount': 279}
+# {'_id': 'Greece', 'total_amount': 2}
+# {'_id': 'Federal Republic of Yugoslavia', 'total_amount': 2}
+# {'_id': 'Poland', 'total_amount': 4}
+# {'_id': 'Serbia', 'total_amount': 1}
+# {'_id': 'Libya', 'total_amount': 1}
+# {'_id': 'West Germany', 'total_amount': 12}
+# {'_id': 'Canada', 'total_amount': 190}
+# {'_id': 'Italy', 'total_amount': 61}
+# {'_id': 'Denmark', 'total_amount': 32}
+# {'_id': 'Vietnam', 'total_amount': 2}
+# {'_id': 'Iceland', 'total_amount': 2}
+# {'_id': 'United Kingdom', 'total_amount': 816}
+# {'_id': 'Colombia', 'total_amount': 1}
+# {'_id': 'Turkey', 'total_amount': 3}
+# {'_id': 'Jamaica', 'total_amount': 1}
+# {'_id': 'Taiwan', 'total_amount': 7}
+# {'_id': 'Malta', 'total_amount': 1}
+# {'_id': 'United Arab Emirates', 'total_amount': 2}
+# {'_id': 'Netherlands', 'total_amount': 12}
+# {'_id': 'New Zealand', 'total_amount': 25}
+# {'_id': 'China', 'total_amount': 40}
+# {'_id': 'Romania', 'total_amount': 1}
+# {'_id': 'Indonesia', 'total_amount': 2}
+# {'_id': 'Thailand', 'total_amount': 6}
+# {'_id': 'Philippines', 'total_amount': 3}
+# {'_id': '', 'total_amount': 3}
+# {'_id': 'India', 'total_amount': 62}
+# {'_id': 'South Africa', 'total_amount': 8}
+# {'_id': 'Israel', 'total_amount': 5}
+# {'_id': 'Germany', 'total_amount': 117}
+# {'_id': 'Portugal', 'total_amount': 2}
+# {'_id': 'Australia', 'total_amount': 92}
+# {'_id': 'Soviet Union', 'total_amount': 2}
+
+
 
     
 """
@@ -157,9 +224,9 @@ def budgetRevenueRelationship(collection1, collection2):
 
 """
 Utilize MongoDB querying to access various collections from the entire database of movie information.
-profit (gross - budget) vs score
+profit (gross - budget) vs score. Top directors based on said metric.
 """
-def profitScoreRelationship(collection1):
+def profitScoreMetricAnalysis(collection1):
     collection1.update_many({"$or": [{"score": ""}, {"gross": ""}, {"budget": ""}]}, {"$set": {"score": 0, "budget": 0, "gross": 0}})
     doubleConversion = {
         "$addFields": {
@@ -212,17 +279,17 @@ if __name__ == "__main__":
     collection2 = db["countries"]
 
     while(1):
-        print("Select the following data analysis functionalities for our movies NOSQL database: \n 1: Compute the most popular/acclaimed movies based on genre with visualization \n 2: Show the top genre of movies per country to display on map \n 3: Analyze the relationship of GDP vs. the budget-gross ratio of movies per country \n 4: Analyze the relationship between profit vs. the score of a movie")
+        print("Select the following data analysis functionalities for our movies NOSQL database: \n 1: Compute the most popular/acclaimed movies based on genre with visualization \n 2: Show the top genre of movies per country to display on map \n 3: Analyze the relationship of GDP vs. the budget-gross ratio of movies per country \n 4: Analyze the relationship between profit vs. the score of a movie \n q: Quit program")
         inp = input("Enter 1, 2, 3, or 4: ")
         if (inp == "1"):
             topPopularGenres(collection1)
-        # elif (input == "2"):
-        #     #TODO
+        elif (inp == "2"):
+            topGenreCountry(collection1)
         elif (inp == "3"):
             budgetRevenueRelationship(collection1, collection2)
         elif (inp == "4"):
-            profitScoreRelationship(collection1)
+            profitScoreMetricAnalysis(collection1)
         elif (inp == "q"):
             break
         else:
-            print("Invalid input! Please type in either 1, 2, 3, or 4.")
+            print("Invalid input! Please type in either 1, 2, 3, 4, or q.")
