@@ -121,6 +121,7 @@ def topGenreCountry(collection1):
     wmap.render_to_file("worldmap.svg")
     print("success")
 
+
 # {'_id': 'Kenya', 'total_amount': 1}
 # {'_id': 'Yugoslavia', 'total_amount': 5}
 # {'_id': 'Spain', 'total_amount': 47}
@@ -275,8 +276,9 @@ def profitScoreMetricAnalysis(collection1):
     score = []
 
     for json in result:
-        profit.append(json["profit"])
-        score.append(json["convertedScore"])
+        if json["profit"] > 0:
+            profit.append(json["profit"])
+            score.append(json["convertedScore"])
 
     figure = plt.figure(figsize=(15, 10))
     plt.scatter(profit, score, color='blue')
@@ -289,11 +291,9 @@ def profitScoreMetricAnalysis(collection1):
     log_curve = np.polyfit(profit, score, 1)
     print(log_curve)
 
-    """
-    model.fit(profit[:,np.newaxis], score)
-    plt.plot(profit, model.predict(profit[:,np.newaxis]), color='red')
+    # model.fit(profit[:,np.newaxis], score)
+    # plt.plot(profit, model.predict(profit[:,np.newaxis]), color='red')
     plt.show()
-    """
 
 
 if __name__ == "__main__":
