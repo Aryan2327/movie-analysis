@@ -8,6 +8,7 @@ from sklearn.linear_model import LinearRegression
 import pygal
 from pygal.style import Style
 from countryCodes import countryCodes
+from scipy.optimize import curve_fit
 
 
 def insert(collection):
@@ -27,7 +28,7 @@ Provide a data visualization indicating the disparity of genres among popular/ac
 """
 
 
-def topPopularGenres(collection):
+def topPopularGenres(collection, n):
     collection.update_many({"$or": [{"score": ""}, {"votes": ""}]}, {"$set": {"score": 0, "votes": 0}})
     doubleConversion = {
         "$addFields": {
@@ -44,7 +45,7 @@ def topPopularGenres(collection):
         "$sort": {"metric": -1}
     }
 
-    limit = {"$limit": 300}
+    limit = {"$limit": n}
 
     group = {"$group": {"_id": "$genre", "total_amount": {"$sum": 1}}}
 
@@ -119,7 +120,7 @@ def topGenreCountry(collection1):
     for key, val in genresCountryMappings.items():
         wmap.add(key, val)
     wmap.render_to_file("worldmap.svg")
-    print("success")
+    print("Map created in directory.")
 
 
 # {'_id': 'Kenya', 'total_amount': 1}
@@ -180,6 +181,16 @@ def budgetRevenueRelationship(collection1, collection2):
     # for i in result:
     #     print(i)
 
+    # string_conversion = {
+    #     "$addFields": {
+    #         "convertedBudget": {"$toString": "$budget"},
+    #         "convertedGross": {"$toString": "gross"}
+    #     }
+    # }
+
+    collection1.update_many({"$or": [{"score": 0}, {"gross": 0}, {"budget": 0}]},
+                            {"$set": {"score": "", "budget": "", "gross": ""}})
+
     remove_whitespace = {
         "$addFields": {
             "country": {"$trim": {"input": "$Country"}}
@@ -195,11 +206,6 @@ def budgetRevenueRelationship(collection1, collection2):
         }
     }
 
-    # project = {
-    #     "$project": {"_id": 0, "country": 1, "GDP ($ per capita)": 1, "Population": 1,
-    #                  "budgetRevenueRatio": {"$multiply": ["$budget", "$gross"]}},
-    # }
-
     joined_res = collection2.aggregate([
         remove_whitespace,
         join,
@@ -212,6 +218,8 @@ def budgetRevenueRelationship(collection1, collection2):
             total = 0
             count = 0
             for y in x["MovieInfo"]:
+                y["budget"] = str(y["budget"])
+                y["gross"] = str(y["gross"])
                 if (len(y["budget"]) != 0 and len(y["gross"]) != 0):
                     temp = float(y["budget"]) / float(y["gross"])
                     y["budgetGrossRatio"] = temp
@@ -223,9 +231,6 @@ def budgetRevenueRelationship(collection1, collection2):
                 revGross.append(avg)
                 gdps.append(int(x["GDP ($ per capita)"]))
 
-    # print(revGross)
-    # print(gdps)
-
     figure = plt.figure(figsize=(15, 10))
     plt.scatter(revGross, gdps, color='green')
 
@@ -233,13 +238,14 @@ def budgetRevenueRelationship(collection1, collection2):
     plt.ylabel("GDP ($ per capita)")
     plt.title("GDP vs Average Budget-Gross Ratio Per Country")
 
-    model = LinearRegression()
-    revGross = np.array(revGross)
-    gdps = np.array(gdps)
-    model.fit(revGross[:, np.newaxis], gdps)
+    # Best fit line for this data; However, not applicable for this specific data.
+    #model = LinearRegression()
+    #revGross = np.array(revGross)
+    #gdps = np.array(gdps)
+    #model.fit(revGross[:, np.newaxis], gdps)
     # print(model.coef_, model.intercept_)
 
-    plt.plot(revGross, model.predict(revGross[:, np.newaxis]), color='red')
+    #plt.plot(revGross, model.predict(revGross[:, np.newaxis]), color='red')
 
     plt.show()
 
@@ -247,10 +253,11 @@ def budgetRevenueRelationship(collection1, collection2):
 """
 Utilize MongoDB querying to access various collections from the entire database of movie information.
 profit (gross - budget) vs score. Top directors based on said metric.
+Top 10/20 directors in a bargraph, and the average metric is (profit x score), directors have to have atleast 2 films, 
 """
 
 
-def profitScoreMetricAnalysis(collection1):
+def profitScoreMetricAnalysis(collection1, n):
     collection1.update_many({"$or": [{"score": ""}, {"gross": ""}, {"budget": ""}]},
                             {"$set": {"score": 0, "budget": 0, "gross": 0}})
     doubleConversion = {
@@ -261,14 +268,15 @@ def profitScoreMetricAnalysis(collection1):
         }
     }
 
-    project = {
-        "$project": {"_id": 0, "convertedScore": 1, "profit": {"$subtract": ["$convertedGross", "$convertedBudget"]}},
+    project1 = {
+        "$project": {"_id": 0, "convertedScore": 1, "director": 1,
+                     "profit": {"$subtract": ["$convertedGross", "$convertedBudget"]}}
     }
 
     result = collection1.aggregate(
         [
             doubleConversion,
-            project
+            project1
         ]
     )
 
@@ -280,20 +288,68 @@ def profitScoreMetricAnalysis(collection1):
             profit.append(json["profit"])
             score.append(json["convertedScore"])
 
-    figure = plt.figure(figsize=(15, 10))
-    plt.scatter(profit, score, color='blue')
+    def logfunc(x, a, b):
+        return a * np.log(x) + b
 
-    plt.xlabel("Profit")
-    plt.ylabel("Score")
-    plt.title("Profit vs Score")
-    profit = np.log(np.array(profit))
+    # Plot data analyzing profit and score; generate best fit curve for the data
+    fig, axes = plt.subplots(nrows=2, ncols=1, figsize=(15,15))
+    axes[0].set_xlabel("Profit")
+    axes[0].set_ylabel("Score")
+    axes[0].set_title("Profit vs Score")
     score = np.array(score)
-    log_curve = np.polyfit(profit, score, 1)
-    print(log_curve)
-
+    popt, pcov = curve_fit(logfunc, profit, score)
+    axes[0].scatter(profit, score, color='blue')
+    axes[0].plot(profit, logfunc(profit, popt[0], popt[1]), color='red', label='Curve')
     # model.fit(profit[:,np.newaxis], score)
     # plt.plot(profit, model.predict(profit[:,np.newaxis]), color='red')
+
+    project2 = {
+        "$project": {"_id": 0, "convertedScore": 1, "director": 1,
+                     "profit": 1, "metric":
+                         {
+                             "$cond": {"if": {"$ne": ["$profit", 0]},
+                                       "then": {"$multiply": ["$profit", "$convertedScore"]}, "else": 0}
+                         },
+                     "count_movie":
+                         {
+                             "$cond": {"if": {"$eq": ["$profit", 0]},
+                                       "then": 0, "else": 1}
+                         },
+                     }
+    }
+    group = {
+        "$group": {"_id": "$director", "total_movies": {"$sum": "$count_movie"}, "total_metric": {"$sum": "$metric"}}}
+    metric_avg = {"$project": {"_id": 1, "metric_avg":
+        {
+            "$cond": {"if": {"$lt": ["$total_movies", 2]}, "then": -999999999999999,
+                      "else": {"$divide": ["$total_metric", "$total_movies"]}}
+        }}}
+    sort = {"$sort": {"metric_avg": -1}}
+    limit = {"$limit": n}
+    result = collection1.aggregate([
+        doubleConversion,
+        project1,
+        project2,
+        group,
+        metric_avg,
+        sort,
+        limit
+    ])
+
+    directors = []
+    metric_avgs = []
+    for json in result:
+        directors.append(json["_id"])
+        metric_avgs.append(json["metric_avg"])
+
+    axes[1].set_xlabel("Directors")
+    axes[1].set_ylabel("Avg Profit-Score Metric")
+    axes[1].set_title("Top Directors Based on Avg Profit-Score Metric")
+    axes[1].bar(directors, metric_avgs, color='orange', width=0.4)
+    plt.subplots_adjust(hspace=0.5)
     plt.show()
+
+    
 
 
 if __name__ == "__main__":
@@ -306,15 +362,23 @@ if __name__ == "__main__":
     while (1):
         print(
             "Select the following data analysis functionalities for our movies NOSQL database: \n 1: Compute the most popular/acclaimed movies based on genre with visualization \n 2: Show the top genre of movies per country to display on map \n 3: Analyze the relationship of GDP vs. the budget-gross ratio of movies per country \n 4: Analyze the relationship between profit vs. the score of a movie \n q: Quit program")
-        inp = input("Enter 1, 2, 3, or 4: ")
+        inp = input("Enter 1, 2, 3, 4, or q: ")
         if (inp == "1"):
-            topPopularGenres(collection1)
+            n = int(input("Set n value for limit (Distribution of genres of top-popular n movies): \n"))
+            bool = n > 0 and n <= 6000
+            while (not bool):
+                n = int(input("Please input a valid input (n > 0 and n <= 60000): \n"))
+            topPopularGenres(collection1, n)
         elif (inp == "2"):
             topGenreCountry(collection1)
         elif (inp == "3"):
             budgetRevenueRelationship(collection1, collection2)
         elif (inp == "4"):
-            profitScoreMetricAnalysis(collection1)
+            n = int(input("Set n value for limit (Top n directors based on profit-score metric): \n"))
+            bool = n > 0 and n <= 10
+            while (not bool):
+                n = int(input("Please input a valid input (n > 0 and n <= 10): \n"))
+            profitScoreMetricAnalysis(collection1, n)
         elif (inp == "q"):
             break
         else:

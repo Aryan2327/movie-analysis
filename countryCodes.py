@@ -117,7 +117,7 @@ countryList = {
 	'KM': 'Comoros',
 	'KN': 'St. Kitts and Nevis',
 	'KP': 'Korea, Democratic People\'s Republic of',
-	'KR': 'Korea, Republic of',
+	'KR': 'South Korea',
 	'KW': 'Kuwait',
 	'KY': 'Cayman Islands',
 	'KZ': 'Kazakhstan',
