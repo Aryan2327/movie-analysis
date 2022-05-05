@@ -80,7 +80,7 @@ def topPopularGenres(collection, n):
 
 
 """
-Utilize MongoDB querying to access various collections from the entire database of movie information. Top genre per country map
+Utilize MongoDB querying to access various collections from the entire database of movie information. Top genre produced per country map
 
 """
 
@@ -115,7 +115,7 @@ def topGenreCountry(collection1):
 
     print(genresCountryMappings)
     wmap = pygal.maps.world.World()
-    wmap.title = 'Top Genre per Country'
+    wmap.title = 'Top Genre Produced per Country'
 
     for key, val in genresCountryMappings.items():
         wmap.add(key, val)
@@ -361,7 +361,7 @@ if __name__ == "__main__":
 
     while (1):
         print(
-            "Select the following data analysis functionalities for our movies NOSQL database: \n 1: Compute the most popular/acclaimed movies based on genre with visualization \n 2: Show the top genre of movies per country to display on map \n 3: Analyze the relationship of GDP vs. the budget-gross ratio of movies per country \n 4: Analyze the relationship between profit vs. the score of a movie \n q: Quit program")
+            "Select the following data analysis functionalities for our movies NOSQL database: \n 1: Compute the most popular/acclaimed movies based on genre with visualization \n 2: Show the top genre of movies produced per country to display on map \n 3: Analyze the relationship of GDP vs. the budget-gross ratio of movies per country \n 4: Analyze the relationship between profit vs. the score of a movie as well as this this profit-score metric to determine the top n directors\n q: Quit program")
         inp = input("Enter 1, 2, 3, 4, or q: ")
         if (inp == "1"):
             n = int(input("Set n value for limit (Distribution of genres of top-popular n movies): \n"))
